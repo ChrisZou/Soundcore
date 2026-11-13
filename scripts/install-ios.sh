@@ -4,7 +4,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORKSPACE="${ROOT}/ios/Runner.xcworkspace"
-TEAM_ID="X5X4TD477G"
+TEAM_ID="W4SX57U6XB"
 CONFIGURATION="Release"
 DEVICE_ID=""
 DEVICE_NAME=""

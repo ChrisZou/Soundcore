@@ -107,7 +107,7 @@ void main() {
         child: const MaterialApp(home: SettingsScreen()),
       ),
     );
-    expect(find.text('设置'), findsNothing);
+    expect(find.text('设置'), findsOneWidget);
     expect(find.text('服务商'), findsNothing);
     expect(find.textContaining('xAI'), findsNothing);
     expect(find.byKey(const ValueKey('apikey-soniox')), findsOneWidget);
@@ -138,42 +138,45 @@ void main() {
       findsOneWidget,
     );
     expect(find.byKey(const ValueKey('settings-stt-group')), findsOneWidget);
-    expect(find.byType(SurfaceCard), findsNothing);
+    expect(find.byType(SurfaceCard), findsNWidgets(2));
 
     languageSelector.onChanged?.call('en');
     await tester.pump();
     expect(controller.transcriptLanguage, 'en');
   });
 
-  testWidgets('connected Device uses flat management sections', (tester) async {
-    tester.view.physicalSize = const Size(390, 1600);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
+  testWidgets(
+    'connected Device retains management actions in rounded sections',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 1600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-    final controller = RecorderController(loadPersistedState: false)
-      ..connected = true;
-    addTearDown(controller.dispose);
+      final controller = RecorderController(loadPersistedState: false)
+        ..connected = true;
+      addTearDown(controller.dispose);
 
-    await tester.pumpWidget(
-      ChangeNotifierProvider.value(
-        value: controller,
-        child: const MaterialApp(home: DeviceScreen()),
-      ),
-    );
+      await tester.pumpWidget(
+        ChangeNotifierProvider.value(
+          value: controller,
+          child: const MaterialApp(home: DeviceScreen()),
+        ),
+      );
 
-    for (final key in [
-      'device-battery-section',
-      'device-recording-section',
-      'device-pairing-section',
-      'device-info-section',
-      'device-danger-section',
-    ]) {
-      expect(find.byKey(ValueKey(key)), findsOneWidget);
-    }
-    expect(find.text('绑定后播报（实验）'), findsNothing);
-    expect(find.byType(SurfaceCard), findsNothing);
-  });
+      for (final key in [
+        'device-battery-section',
+        'device-recording-section',
+        'device-pairing-section',
+        'device-info-section',
+        'device-danger-section',
+      ]) {
+        expect(find.byKey(ValueKey(key)), findsOneWidget);
+      }
+      expect(find.text('绑定后播报（实验）'), findsNothing);
+      expect(find.byType(SurfaceCard), findsNWidgets(2));
+    },
+  );
 
   testWidgets('communication detail keeps equal rotated panels after pause', (
     tester,

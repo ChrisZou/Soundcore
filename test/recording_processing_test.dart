@@ -368,7 +368,7 @@ void main() {
   });
 
   test(
-    'recording language overrides an unavailable global language and is remembered',
+    'temporary language never changes the settings default for the next job',
     () async {
       final apple = _Apple()
         ..statuses['en-US'] = SpeechResourceStatus.needsDownload;
@@ -381,8 +381,14 @@ void main() {
       expect(c.recordingView(ref).sourceLanguage, 'zh-CN');
       expect(c.appleSourceLanguage, 'en-US');
       expect(c.sttConfigured, isFalse);
+      // Restore resources for the global language; metadata stays Chinese.
+      apple.statuses['en-US'] = SpeechResourceStatus.ready;
       await c.transcribeRecording(ref);
-      expect(apple.fileLanguages, ['zh-CN', 'zh-CN']);
+      expect(apple.fileLanguages, ['zh-CN', 'en-US']);
+      expect(c.appleSourceLanguage, 'en-US');
+      c.appleSourceLanguage = 'zh-CN';
+      await c.transcribeRecording(ref);
+      expect(apple.fileLanguages, ['zh-CN', 'en-US', 'zh-CN']);
     },
   );
 

@@ -560,34 +560,59 @@ void main() {
   );
 
   testWidgets(
-    'Apple file transcription requires recording language and ignores global English',
+    'Apple transcription defaults to settings without requiring a language choice',
+    (tester) async {
+      final c = appleRecording(sourceLanguage: 'zh-CN');
+      const reference = RecordingReference(fileId: 100, path: '/tmp/100.wav');
+      await pump(tester, c, const RecordingDetailScreen(reference: reference));
+      expect(languageDropdown(tester).value, 'en-US');
+      expect(c.languageChecks, ['en-US']);
+      await tester.tap(find.byKey(const ValueKey('apple-transcribe')));
+      await tester.pumpAndSettle();
+      expect(c.transcriptionRequests, [('en-US', false)]);
+      languageDropdown(tester).onChanged!('zh-CN');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('apple-transcribe')));
+      await tester.pumpAndSettle();
+      expect(c.transcriptionRequests.last, ('zh-CN', false));
+      expect(c.appleSourceLanguage, 'en-US');
+    },
+  );
+
+  testWidgets('Apple retranscription confirms with the settings language', (
+    tester,
+  ) async {
+    final c = appleRecording(text: '已有转写', sourceLanguage: 'zh-CN');
+    const reference = RecordingReference(fileId: 100, path: '/tmp/100.wav');
+    await pump(tester, c, const RecordingDetailScreen(reference: reference));
+    await tester.tap(find.byTooltip('更多操作'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('重新转写'));
+    await tester.pumpAndSettle();
+    expect(languageDropdown(tester, retranscribing: true).value, 'en-US');
+    await tester.tap(find.byKey(const ValueKey('apple-retranscribe')));
+    await tester.pumpAndSettle();
+    expect(c.transcriptionRequests, [('en-US', false)]);
+    expect(c.appleSourceLanguage, 'en-US');
+  });
+
+  testWidgets(
+    'settings changes update the default until explicitly overridden',
     (tester) async {
       final c = appleRecording();
       const reference = RecordingReference(fileId: 100, path: '/tmp/100.wav');
       await pump(tester, c, const RecordingDetailScreen(reference: reference));
-      expect(languageDropdown(tester).value, isNull);
-      expect(
-        tester
-            .widget<FilledButton>(
-              find.byKey(const ValueKey('apple-transcribe')),
-            )
-            .onPressed,
-        isNull,
-      );
-      expect(c.languageChecks, isEmpty);
-      await tester.tap(
-        find.byKey(const ValueKey('recording-language-transcribe')),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('简体中文').last);
+      expect(languageDropdown(tester).value, 'en-US');
+      c.appleSourceLanguage = 'zh-CN';
+      c.setProcessingBusy(false);
       await tester.pumpAndSettle();
       expect(languageDropdown(tester).value, 'zh-CN');
-      expect(c.languageChecks, ['zh-CN']);
-      await tester.tap(find.byKey(const ValueKey('apple-transcribe')));
+      languageDropdown(tester).onChanged!('en-US');
       await tester.pumpAndSettle();
-      expect(c.transcriptionRequests, [('zh-CN', false)]);
-      expect(c.appleSourceLanguage, 'en-US');
-      expect(c.globallyConfigured, isFalse);
+      c.setProcessingBusy(false);
+      await tester.pumpAndSettle();
+      expect(languageDropdown(tester).value, 'en-US');
+      expect(c.appleSourceLanguage, 'zh-CN');
     },
   );
 
@@ -608,14 +633,14 @@ void main() {
       expect(languageDropdown(tester).value, 'zh-CN');
       expect(find.text('转写未完成，请重试'), findsOneWidget);
       expect(find.text('转写录音'), findsOneWidget);
-      expect(c.languageChecks, ['zh-CN', 'zh-CN']);
+      expect(c.languageChecks, ['en-US', 'zh-CN', 'zh-CN']);
     },
   );
 
   testWidgets('Apple recording language ignores stale availability responses', (
     tester,
   ) async {
-    final c = appleRecording();
+    final c = appleRecording()..appleSourceLanguage = '';
     final english = Completer<SpeechResourceStatus>();
     final chinese = Completer<SpeechResourceStatus>();
     c.languageStatusResolvers['en-US'] = () => english.future;
@@ -671,7 +696,8 @@ void main() {
   testWidgets(
     'Apple transcription rejects unsupported languages and disables during other work',
     (tester) async {
-      final c = appleRecording(sourceLanguage: 'zh-CN');
+      final c = appleRecording(sourceLanguage: 'zh-CN')
+        ..appleSourceLanguage = 'zh-CN';
       c.languageStatuses['zh-CN'] = SpeechResourceStatus.unsupported;
       const reference = RecordingReference(fileId: 100, path: '/tmp/100.wav');
       await pump(tester, c, const RecordingDetailScreen(reference: reference));
@@ -710,10 +736,10 @@ void main() {
   );
 
   testWidgets(
-    'Apple preselection requires an exact supported recording locale',
+    'Apple settings preselection requires an exact supported locale',
     (tester) async {
       const reference = RecordingReference(fileId: 100, path: '/tmp/100.wav');
-      final unknown = appleRecording(sourceLanguage: 'zh');
+      final unknown = appleRecording()..appleSourceLanguage = 'zh';
       await pump(
         tester,
         unknown,
@@ -721,7 +747,7 @@ void main() {
       );
       expect(languageDropdown(tester).value, isNull);
       await tester.pumpWidget(const SizedBox.shrink());
-      final known = appleRecording(sourceLanguage: 'ZH_cn');
+      final known = appleRecording()..appleSourceLanguage = 'ZH_cn';
       await pump(
         tester,
         known,
@@ -770,7 +796,8 @@ void main() {
     'Apple recording language form and retranscription dialog fit 200% text',
     (tester) async {
       const reference = RecordingReference(fileId: 100, path: '/tmp/100.wav');
-      final c = appleRecording(sourceLanguage: 'zh-CN');
+      final c = appleRecording(sourceLanguage: 'zh-CN')
+        ..appleSourceLanguage = 'zh-CN';
       c.languageStatuses['zh-CN'] = SpeechResourceStatus.needsDownload;
       await pump(
         tester,
@@ -786,7 +813,8 @@ void main() {
       expect(find.text('下载语言并转写'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
-      final saved = appleRecording(text: '已有文本', sourceLanguage: 'zh-CN');
+      final saved = appleRecording(text: '已有文本', sourceLanguage: 'en-US')
+        ..appleSourceLanguage = 'zh-CN';
       saved.languageStatuses['zh-CN'] = SpeechResourceStatus.needsDownload;
       await pump(
         tester,

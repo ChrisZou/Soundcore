@@ -181,9 +181,9 @@ class _SuccessStep extends StatelessWidget {
               onPressed: onContinue,
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.accent,
-                foregroundColor: Colors.white,
+                foregroundColor: AppColors.onAccent,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(26),
+                  borderRadius: BorderRadius.circular(32),
                 ),
                 textStyle: const TextStyle(
                   fontSize: 16,
@@ -380,9 +380,9 @@ class _TipStep extends StatelessWidget {
                 onPressed: onPrimary,
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.accent,
-                  foregroundColor: Colors.white,
+                  foregroundColor: AppColors.onAccent,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(26),
+                    borderRadius: BorderRadius.circular(32),
                   ),
                   textStyle: const TextStyle(
                     fontSize: 16,

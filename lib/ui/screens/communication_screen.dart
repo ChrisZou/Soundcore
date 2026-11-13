@@ -61,7 +61,7 @@ class _CommunicationScreenState extends State<CommunicationScreen> {
                     key: const ValueKey('communication-owner-panel'),
                     languageCode: _owner,
                     turns: _ownerTurns,
-                    backgroundColor: const Color(0xFFF0F4FF),
+                    backgroundColor: AppColors.talkA,
                     accentColor: AppColors.accent,
                   ),
                 ),
@@ -73,7 +73,7 @@ class _CommunicationScreenState extends State<CommunicationScreen> {
                       key: const ValueKey('communication-guest-panel'),
                       languageCode: _guest,
                       turns: _guestTurns,
-                      backgroundColor: const Color(0xFFECFAF5),
+                      backgroundColor: AppColors.talkB,
                       accentColor: AppColors.mint,
                     ),
                   ),
@@ -130,8 +130,18 @@ class _TranslationPanel extends StatelessWidget {
 
     return Semantics(
       label: '${language.name} translation',
-      child: ColoredBox(
-        color: backgroundColor,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(14, 7, 14, 7),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          border: Border.all(color: AppColors.border),
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(32),
+            topRight: Radius.circular(32),
+            bottomLeft: Radius.circular(32),
+            bottomRight: Radius.circular(8),
+          ),
+        ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 22, 24, 34),
           child: Column(
@@ -149,7 +159,7 @@ class _TranslationPanel extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    language.label,
+                    language.name,
                     style: TextStyle(
                       color: accentColor,
                       fontSize: 13,
@@ -182,7 +192,7 @@ class _TranslationPanel extends StatelessWidget {
                                 turn.text,
                                 style: const TextStyle(
                                   color: AppColors.textMuted,
-                                  fontSize: 16,
+                                  fontSize: 12,
                                   height: 1.35,
                                 ),
                               ),
@@ -195,8 +205,10 @@ class _TranslationPanel extends StatelessWidget {
                               ),
                               style: const TextStyle(
                                 color: AppColors.textPrimary,
-                                fontSize: 30,
-                                fontWeight: FontWeight.w700,
+                                fontFamily: AppTypography.serif,
+                                fontFamilyFallback: AppTypography.serifFallback,
+                                fontSize: 31,
+                                fontWeight: FontWeight.w500,
                                 height: 1.2,
                                 letterSpacing: -0.5,
                               ),
@@ -234,8 +246,8 @@ class _CenterControls extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 18),
         padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
         decoration: BoxDecoration(
-          color: AppColors.bgCard.withValues(alpha: 0.97),
-          borderRadius: BorderRadius.circular(18),
+          color: AppColors.accent,
+          borderRadius: BorderRadius.circular(35),
           border: Border.all(color: AppColors.border),
           boxShadow: AppColors.cardShadow,
         ),
@@ -249,8 +261,8 @@ class _CenterControls extends StatelessWidget {
                   height: 9,
                   decoration: BoxDecoration(
                     color: current && c.recording
-                        ? AppColors.coral
-                        : AppColors.textMuted,
+                        ? AppColors.onAccent
+                        : AppColors.accentSoft,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -258,13 +270,23 @@ class _CenterControls extends StatelessWidget {
                 Expanded(
                   child: Text(
                     current && c.recording ? '交流 · Soniox' : '已暂停',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                    style: TextStyle(
+                      color: AppColors.onAccent,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
                 IconButton.filledTonal(
                   key: const ValueKey('communication-pause'),
                   tooltip: '暂停录音',
-
+                  style: IconButton.styleFrom(
+                    foregroundColor: AppColors.onAccent,
+                    backgroundColor: AppColors.onAccent.withValues(alpha: .2),
+                    disabledForegroundColor: AppColors.onAccent.withValues(
+                      alpha: .5,
+                    ),
+                  ),
                   onPressed: current && c.recording && c.phase != AppPhase.busy
                       ? c.pauseRecord
                       : null,
@@ -281,7 +303,7 @@ class _CenterControls extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  color: AppColors.coral,
+                  color: AppColors.onAccent,
                   fontSize: 11,
                   height: 1.25,
                 ),

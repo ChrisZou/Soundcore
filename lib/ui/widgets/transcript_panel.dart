@@ -60,9 +60,8 @@ class TranscriptPanel extends StatelessWidget {
                   TextButton.icon(
                     onPressed: () {
                       Clipboard.setData(ClipboardData(text: draft));
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(const SnackBar(content: Text('转写已复制')));
+                      ScaffoldMessenger.of(context)
+                          .showSnackBar(const SnackBar(content: Text('转写已复制')));
                     },
                     icon: const Icon(Icons.copy_rounded, size: 16),
                     label: const Text('复制'),
@@ -147,8 +146,8 @@ class TranscriptPanel extends StatelessWidget {
               constraints: const BoxConstraints(maxHeight: 160),
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: AppColors.bgElevated,
-                borderRadius: BorderRadius.circular(10),
+                color: AppColors.accentSoft,
+                borderRadius: BorderRadius.circular(23),
                 border: Border.all(color: AppColors.border),
               ),
               child: SingleChildScrollView(
@@ -156,7 +155,7 @@ class TranscriptPanel extends StatelessWidget {
                   draft,
                   style: const TextStyle(
                     fontSize: 13,
-                    height: 1.45,
+                    height: 1.85,
                     color: AppColors.textPrimary,
                   ),
                 ),
@@ -168,9 +167,8 @@ class TranscriptPanel extends StatelessWidget {
                 TextButton.icon(
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: draft));
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(const SnackBar(content: Text('转写已复制')));
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(const SnackBar(content: Text('转写已复制')));
                   },
                   icon: const Icon(Icons.copy_rounded, size: 16),
                   label: const Text('复制'),

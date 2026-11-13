@@ -18,6 +18,7 @@ class SettingsScreen extends StatelessWidget {
     final c = context.watch<RecorderController>();
 
     return GradientScaffold(
+      appBar: AppBar(title: const Text('设置')),
       child: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
@@ -27,9 +28,7 @@ class SettingsScreen extends StatelessWidget {
               key: const ValueKey('settings-transfer-group'),
               child: _SettingsSwitch(
                 title: '自动传输',
-                subtitle: c.autoTransferActive
-                    ? '正在传输设备端未导出录音…'
-                    : '自动下载设备上的历史录音',
+                subtitle: c.autoTransferActive ? '正在传输设备端未导出录音…' : null,
                 value: c.autoRealtime,
                 onChanged: c.setAutoRealtime,
               ),
@@ -45,7 +44,7 @@ class SettingsScreen extends StatelessWidget {
                     title: '自动转写',
                     subtitle: c.speechProvider == SttProvider.moss
                         ? '录音结束后生成文字'
-                        : '录音时生成文字',
+                        : null,
                     value: c.autoTranscribe,
                     onChanged: c.setAutoTranscribe,
                   ),
@@ -279,14 +278,9 @@ class _SettingsGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.border)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(0, 12, 0, 16),
-        child: child,
-      ),
+    return SurfaceCard(
+      padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 14),
+      child: child,
     );
   }
 }
@@ -315,7 +309,7 @@ class _TranscriptLanguageSelector extends StatelessWidget {
     return DropdownButtonFormField<String>(
       key: const ValueKey('transcript-language-selector'),
       initialValue: selected,
-      decoration: const InputDecoration(labelText: '语言提示'),
+      decoration: const InputDecoration(labelText: '原文语言'),
       isExpanded: true,
       items: [
         for (final language in _languages)
@@ -337,11 +331,7 @@ class _SttModeSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = controller;
     final soniox = c.speechProvider == SttProvider.soniox;
-    final subtitle = !c.autoTranscribe
-        ? '请先开启自动转写'
-        : soniox
-        ? '翻译为单向，交流为双向'
-        : null;
+    final subtitle = !c.autoTranscribe ? '请先开启自动转写' : null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -420,7 +410,7 @@ class _SettingsSwitch extends StatelessWidget {
   });
 
   final String title;
-  final String subtitle;
+  final String? subtitle;
   final bool value;
   final ValueChanged<bool>? onChanged;
 
@@ -440,15 +430,17 @@ class _SettingsSwitch extends StatelessWidget {
                   fontSize: 14,
                 ),
               ),
-              const SizedBox(height: 3),
-              Text(
-                subtitle,
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 12,
-                  height: 1.3,
+              if (subtitle != null) ...[
+                const SizedBox(height: 3),
+                Text(
+                  subtitle!,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                    height: 1.3,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ),
@@ -528,7 +520,7 @@ class _LanguageField extends StatelessWidget {
         foregroundColor: AppColors.textPrimary,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
         side: const BorderSide(color: AppColors.border),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(23)),
       ),
       onPressed: () async {
         final selected = await showModalBottomSheet<String>(
@@ -739,6 +731,7 @@ class _ApiKeyFieldState extends State<_ApiKeyField> {
             isDense: true,
             hintText: '粘贴 API Key…',
             hintStyle: const TextStyle(
+              fontFamily: 'PingFang SC',
               fontSize: 12,
               color: AppColors.textSecondary,
             ),
@@ -749,15 +742,15 @@ class _ApiKeyFieldState extends State<_ApiKeyField> {
               vertical: 12,
             ),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(23),
               borderSide: const BorderSide(color: AppColors.border),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(23),
               borderSide: const BorderSide(color: AppColors.border),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(23),
               borderSide: const BorderSide(color: AppColors.accent, width: 1.4),
             ),
             suffixIcon: Row(

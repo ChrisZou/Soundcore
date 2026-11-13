@@ -32,6 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return GradientScaffold(
+      appBar: AppBar(title: const Text('录音')),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -71,18 +72,18 @@ class _ConnectionHeader extends StatelessWidget {
     final name = c.displayDeviceName;
 
     return Container(
-      color: AppColors.bgCard,
-      padding: EdgeInsets.fromLTRB(
-        20,
-        MediaQuery.paddingOf(context).top + 12,
-        20,
-        16,
+      margin: const EdgeInsets.fromLTRB(22, 4, 22, 8),
+      decoration: BoxDecoration(
+        color: AppColors.onAccent.withValues(alpha: .55),
+        borderRadius: BorderRadius.circular(40),
+        border: Border.all(color: AppColors.onAccent.withValues(alpha: .7)),
       ),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       child: Row(
         children: [
           Container(
-            width: 42,
-            height: 42,
+            width: 28,
+            height: 28,
             decoration: BoxDecoration(
               color: (online ? AppColors.mint : AppColors.accent).withValues(
                 alpha: 0.12,
@@ -109,13 +110,13 @@ class _ConnectionHeader extends StatelessWidget {
                 Text(
                   online ? name : (c.displayDevice != null ? name : '未连接设备'),
                   style: const TextStyle(
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w500,
                     fontSize: 14,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                if (!live) ...[
+                if (!live && online) ...[
                   const SizedBox(height: 2),
                   Text(
                     online
@@ -124,7 +125,7 @@ class _ConnectionHeader extends StatelessWidget {
                                     ? c.statusMessage!
                                     : '正在播放')
                               : _idleStatus(c))
-                        : '点「扫描」查找 soundcore Work',
+                        : '未连接',
                     style: TextStyle(
                       fontSize: 12,
                       color: c.isPlaying
@@ -147,7 +148,7 @@ class _ConnectionHeader extends StatelessWidget {
                 minimumSize: const Size(48, 48),
                 padding: EdgeInsets.zero,
               ),
-              icon: const Icon(Icons.radar_rounded, size: 44),
+              icon: const Icon(Icons.radar_rounded, size: 25),
             ),
         ],
       ),

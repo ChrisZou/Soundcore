@@ -28,7 +28,7 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.anker.soundcoreManager</string>
+			<string>com.weallwitness.soundcore</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>soundcore</string>
@@ -77,6 +77,12 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Soundcore 使用麦克风录制和转写语音。</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Soundcore 使用位置信息识别录音设备的 Wi-Fi 网络，以传输录音。</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Soundcore Manager uses Bluetooth to find and manage your soundcore Work device.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>

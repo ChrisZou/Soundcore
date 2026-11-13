@@ -228,11 +228,15 @@ class _ActiveRecordingBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.watch<RecorderController>();
     return Material(
-      color: AppColors.bgCard,
+      color: Colors.transparent,
       child: Container(
         key: const ValueKey('active-recording-bar'),
-        decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: AppColors.border)),
+        margin: const EdgeInsets.fromLTRB(17, 6, 17, 6),
+        decoration: BoxDecoration(
+          color: AppColors.bgCard,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: AppColors.onAccent),
+          boxShadow: AppColors.cardShadow,
         ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         child: Row(
@@ -278,11 +282,15 @@ class _CompactPlayer extends StatelessWidget {
               )
               .title;
     return Material(
-      color: AppColors.bgCard,
+      color: Colors.transparent,
       child: Container(
         key: const ValueKey('compact-player'),
-        decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: AppColors.border)),
+        margin: const EdgeInsets.fromLTRB(17, 6, 17, 6),
+        decoration: BoxDecoration(
+          color: AppColors.bgCard,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: AppColors.onAccent),
+          boxShadow: AppColors.cardShadow,
         ),
         child: Row(
           children: [
@@ -329,14 +337,18 @@ class _NavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.bgCard,
+      color: Colors.transparent,
       child: SafeArea(
         top: false,
         child: Container(
           key: const ValueKey('bottom-navigation-bar'),
-          padding: const EdgeInsets.fromLTRB(12, 5, 12, 3),
-          decoration: const BoxDecoration(
-            border: Border(top: BorderSide(color: AppColors.border)),
+          margin: const EdgeInsets.fromLTRB(17, 6, 17, 14),
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppColors.navigation,
+            borderRadius: BorderRadius.circular(32),
+            border: Border.all(color: AppColors.onAccent),
+            boxShadow: AppColors.cardShadow,
           ),
           child: Row(
             children: [
@@ -385,35 +397,37 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? AppColors.accent : AppColors.textSecondary;
+    final color = selected ? AppColors.onAccent : AppColors.textSecondary;
     return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: color, size: 20),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 10,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+      flex: selected ? 6 : 5,
+      child: Semantics(
+        selected: selected,
+        button: true,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(25),
+          child: AnimatedContainer(
+            key: selected ? const ValueKey('active-tab-indicator') : null,
+            duration: const Duration(milliseconds: 180),
+            constraints: const BoxConstraints(minHeight: 44),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+            decoration: BoxDecoration(
+              color: selected ? AppColors.accent : Colors.transparent,
+              borderRadius: BorderRadius.circular(25),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: color, size: 20),
+                const SizedBox(width: 7),
+                Flexible(
+                  child: Text(
+                    label,
+                    style: TextStyle(color: color, fontSize: 11),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 3),
-              AnimatedContainer(
-                key: selected ? const ValueKey('active-tab-indicator') : null,
-                duration: const Duration(milliseconds: 180),
-                width: selected ? 22 : 0,
-                height: 2,
-                color: selected ? AppColors.accent : Colors.transparent,
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

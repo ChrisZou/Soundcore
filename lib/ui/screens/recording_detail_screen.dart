@@ -133,7 +133,8 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen> {
                 _AppleTranscriptionForm(
                   reference: widget.reference,
                   initialLanguage:
-                      _selectedRecordingLanguage ?? recording.sourceLanguage,
+                      _selectedRecordingLanguage ??
+                      controller.appleSourceLanguage,
                   enabled: true,
                   retranscribing: true,
                   onLanguageChanged: (language) =>
@@ -175,7 +176,8 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen> {
         if (confirmed != true || !mounted) return;
       }
     }
-    if (apple && sourceLanguage == null) return;
+    sourceLanguage ??=
+        _selectedRecordingLanguage ?? controller.appleSourceLanguage;
     await controller.transcribeRecording(
       widget.reference,
       sourceLanguage: apple ? sourceLanguage : null,
@@ -322,16 +324,7 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen> {
       backgroundColor: AppColors.bg,
       appBar: AppBar(
         backgroundColor: AppColors.bgCard,
-        title: Text(
-          recording.title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        titleTextStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
-          color: AppColors.textPrimary,
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-        ),
+        title: const Text('录音', style: TextStyle(fontSize: 13)),
         actions: [
           IconButton(
             tooltip: '分享录音',
@@ -385,6 +378,27 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Align(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 760),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(27, 12, 27, 18),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    recording.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.heading.copyWith(
+                      fontSize: 33,
+                      fontWeight: FontWeight.w500,
+                      height: 1.2,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
           Align(
             alignment: Alignment.center,
             child: ConstrainedBox(
@@ -525,7 +539,7 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen> {
                                           reference: widget.reference,
                                           initialLanguage:
                                               _selectedRecordingLanguage ??
-                                              recording.sourceLanguage,
+                                              c.appleSourceLanguage,
                                           enabled: canProcess,
                                           onLanguageChanged: (language) =>
                                               _selectedRecordingLanguage =
@@ -554,8 +568,14 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen> {
       bottomNavigationBar: recording.live || recording.audioLocked
           ? _LiveControls(recording: recording)
           : fileReady
-          ? Material(
-              color: AppColors.bgCard,
+          ? Container(
+              margin: const EdgeInsets.fromLTRB(17, 8, 17, 12),
+              decoration: BoxDecoration(
+                color: AppColors.bgCard,
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(color: AppColors.onAccent),
+                boxShadow: AppColors.cardShadow,
+              ),
               child: SafeArea(
                 top: false,
                 child: Padding(
@@ -706,13 +726,44 @@ class _RecordingTextReaderState extends State<RecordingTextReader> {
                         ),
                         child: widget.header != null && index == 0
                             ? widget.header!
-                            : Text(
-                                _paragraphs[index -
-                                    (widget.header == null ? 0 : 1)],
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  height: 1.65,
-                                  color: AppColors.textPrimary,
+                            : Container(
+                                margin: EdgeInsets.only(
+                                  left: index.isOdd ? 15 : 0,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 17,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: index.isOdd
+                                      ? AppColors.accentSoft.withValues(
+                                          alpha: .65,
+                                        )
+                                      : AppColors.bgCard,
+                                  border: Border.all(
+                                    color: AppColors.border.withValues(
+                                      alpha: .5,
+                                    ),
+                                  ),
+                                  borderRadius: BorderRadius.only(
+                                    topLeft: const Radius.circular(22),
+                                    topRight: const Radius.circular(22),
+                                    bottomLeft: Radius.circular(
+                                      index.isOdd ? 22 : 5,
+                                    ),
+                                    bottomRight: Radius.circular(
+                                      index.isOdd ? 5 : 22,
+                                    ),
+                                  ),
+                                ),
+                                child: Text(
+                                  _paragraphs[index -
+                                      (widget.header == null ? 0 : 1)],
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    height: 1.85,
+                                    color: AppColors.textPrimary,
+                                  ),
                                 ),
                               ),
                       ),
@@ -748,8 +799,14 @@ class _LiveControls extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.watch<RecorderController>();
-    return Material(
-      color: AppColors.bgCard,
+    return Container(
+      margin: const EdgeInsets.fromLTRB(17, 8, 17, 12),
+      decoration: BoxDecoration(
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: AppColors.onAccent),
+        boxShadow: AppColors.cardShadow,
+      ),
       child: SafeArea(
         top: false,
         child: Padding(
@@ -922,12 +979,23 @@ class _AppleTranscriptionFormState extends State<_AppleTranscriptionForm> {
   @override
   void didUpdateWidget(_AppleTranscriptionForm oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (_language == null) _initializeLanguage();
+    if (_language == null ||
+        (oldWidget.initialLanguage != widget.initialLanguage &&
+            _supportedLanguage(widget.initialLanguage) != _language)) {
+      _initializeLanguage();
+    }
   }
 
   void _initializeLanguage() {
     final known = _supportedLanguage(widget.initialLanguage);
-    if (known == null) return;
+    if (known == null) {
+      _requestRevision++;
+      _language = null;
+      _status = null;
+      _checking = false;
+      _error = null;
+      return;
+    }
     _language = known;
     _checkLanguage();
   }
@@ -985,7 +1053,6 @@ class _AppleTranscriptionFormState extends State<_AppleTranscriptionForm> {
         c.speechProvider != SttProvider.apple) {
       return;
     }
-    widget.onLanguageChanged(language);
     setState(() => _submitting = true);
     try {
       await widget.onSubmit(

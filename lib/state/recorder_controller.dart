@@ -223,10 +223,8 @@ class RecorderController extends ChangeNotifier {
       unawaited(_loadLocalExports());
       _transcriptsLoaded = _loadPersistedTranscripts();
       unawaited(
-        Future.wait([
-          _settingsLoaded,
-          _transcriptsLoaded,
-        ]).then((_) => _mossJobs.load()),
+        Future.wait([_settingsLoaded, _transcriptsLoaded])
+            .then((_) => _mossJobs.load()),
       );
     }
     if (loadPersistedState || persistedDeviceLoader != null) {
@@ -1113,9 +1111,8 @@ class RecorderController extends ChangeNotifier {
     final raw = _rawTranscriptForPath(path);
     if (id.isEmpty ||
         raw == null ||
-        !extractTranscriptSpeakers(
-          normalizeSttText(raw),
-        ).any((speaker) => speaker.id == id)) {
+        !extractTranscriptSpeakers(normalizeSttText(raw))
+            .any((speaker) => speaker.id == id)) {
       throw ArgumentError('说话人不存在');
     }
 
@@ -1816,11 +1813,9 @@ class RecorderController extends ChangeNotifier {
     }
     await transcribeLocalFile(
       view.path!,
-      sourceLanguage:
-          sourceLanguage ??
-          (speechProvider == SttProvider.apple && view.sourceLanguage != 'auto'
-              ? view.sourceLanguage
-              : null),
+      // A saved recording's metadata describes the previous result, not the
+      // default for a new job. Null uses the current settings snapshot.
+      sourceLanguage: sourceLanguage,
       prepareLanguages: prepareLanguages,
     );
   }

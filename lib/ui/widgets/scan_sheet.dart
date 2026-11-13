@@ -20,9 +20,11 @@ Future<void> showScanDevicesSheet(BuildContext context) {
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
+    useRootNavigator: true,
+    barrierColor: AppColors.textPrimary.withValues(alpha: .22),
     backgroundColor: AppColors.bgElevated,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(38)),
     ),
     builder: (ctx) => const ScanDevicesSheet(),
   );
@@ -106,7 +108,7 @@ class _ScanDevicesSheetState extends State<ScanDevicesSheet> {
     final c = context.watch<RecorderController>();
     final scanning = c.phase == AppPhase.scanning;
     final connecting = c.phase == AppPhase.connecting;
-    final height = MediaQuery.sizeOf(context).height * 0.82;
+    final height = MediaQuery.sizeOf(context).height * 0.72;
 
     final showDeviceList = c.devices.isNotEmpty || connecting;
     _maybeAutoConnectBound(c);
@@ -145,8 +147,10 @@ class _ScanDevicesSheetState extends State<ScanDevicesSheet> {
               '扫描设备',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
+                fontFamily: AppTypography.serif,
+                fontFamilyFallback: AppTypography.serifFallback,
+                fontSize: 27,
+                fontWeight: FontWeight.w500,
                 color: AppColors.textPrimary,
               ),
             ),
@@ -250,7 +254,9 @@ class _ConnectGuidePanelState extends State<_ConnectGuidePanel>
                       width: 120 + 40 * t,
                       height: 120 + 40 * t,
                       decoration: BoxDecoration(
-                        shape: BoxShape.circle,
+                        borderRadius: const BorderRadius.all(
+                          Radius.elliptical(100, 85),
+                        ),
                         color: AppColors.accent.withValues(
                           alpha: 0.08 + 0.06 * t,
                         ),
@@ -413,13 +419,16 @@ class _FoundDevicesPanel extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(24, 4, 24, 8),
           child: Column(
             children: [
-              Image.asset(
-                'assets/product/white_03_device_connect.webp',
-                height: 100,
-                fit: BoxFit.contain,
-                errorBuilder: (_, _, _) => Image.asset(
-                  'assets/product/d3200_device_white.webp',
-                  height: 72,
+              ProductStage(
+                height: 150,
+                child: Image.asset(
+                  'assets/product/white_03_device_connect.webp',
+                  height: 100,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, _, _) => Image.asset(
+                    'assets/product/d3200_device_white.webp',
+                    height: 72,
+                  ),
                 ),
               ),
               const SizedBox(height: 8),

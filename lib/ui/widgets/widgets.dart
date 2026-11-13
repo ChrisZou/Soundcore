@@ -61,7 +61,7 @@ class SurfaceCard extends StatelessWidget {
       padding: padding,
       decoration: BoxDecoration(
         color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(23),
         border: Border.all(color: borderColor ?? AppColors.border),
         boxShadow: !shadow
             ? const []
@@ -83,7 +83,7 @@ class SurfaceCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(23),
         splashColor: AppColors.accent.withValues(alpha: 0.08),
         highlightColor: AppColors.accent.withValues(alpha: 0.04),
         child: card,
@@ -184,7 +184,9 @@ class BatteryRing extends StatelessWidget {
                 Text(
                   '$percent%',
                   style: TextStyle(
-                    fontSize: size * 0.21,
+                    fontSize: size * 0.3,
+                    fontFamily: 'Baskerville',
+                    fontFamilyFallback: const ['Georgia', 'serif'],
                     height: 1,
                     fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary,
@@ -276,7 +278,7 @@ class AccentButton extends StatelessWidget {
       mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
       children: [
         if (icon != null) ...[
-          Icon(icon, size: 18, color: filled ? Colors.white : c),
+          Icon(icon, size: 18, color: filled ? AppColors.onAccent : c),
           const SizedBox(width: 8),
         ],
         Flexible(
@@ -284,7 +286,7 @@ class AccentButton extends StatelessWidget {
             label,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: filled ? Colors.white : c,
+              color: filled ? AppColors.onAccent : c,
               fontWeight: FontWeight.w600,
               fontSize: 14,
             ),
@@ -299,18 +301,11 @@ class AccentButton extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onPressed,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(26),
           child: Ink(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              gradient: filled
-                  ? LinearGradient(
-                      colors: [c, Color.lerp(c, Colors.black, 0.25)!],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    )
-                  : null,
-              color: filled ? null : Colors.transparent,
+              borderRadius: BorderRadius.circular(26),
+              color: filled ? c : Colors.transparent,
               border: filled
                   ? null
                   : Border.all(color: c.withValues(alpha: 0.5)),
@@ -389,4 +384,97 @@ class SectionLabel extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Organic backdrop shared by the device stage and connection sheet.
+class ProductStage extends StatelessWidget {
+  const ProductStage({super.key, this.height = 190, this.child});
+  final double height;
+  final Widget? child;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    height: height,
+    child: Stack(
+      alignment: Alignment.center,
+      children: [
+        ExcludeSemantics(
+          child: Transform.rotate(
+            angle: -.18,
+            child: Container(
+              width: 240,
+              height: height * .8,
+              decoration: BoxDecoration(
+                borderRadius: const BorderRadius.all(
+                  Radius.elliptical(130, 100),
+                ),
+                gradient: const RadialGradient(
+                  center: Alignment(-.5, -.6),
+                  radius: 1.3,
+                  colors: [AppColors.onAccent, AppColors.accentSoft],
+                ),
+              ),
+            ),
+          ),
+        ),
+        child ??
+            Transform.rotate(
+              angle: -.12,
+              child: Image.asset(
+                'assets/product/d3200_device_connected_white.webp',
+                height: height,
+                fit: BoxFit.contain,
+                semanticLabel: 'soundcore Work',
+              ),
+            ),
+      ],
+    ),
+  );
+}
+
+class Pebbles extends StatelessWidget {
+  const Pebbles({super.key});
+  @override
+  Widget build(BuildContext context) => ExcludeSemantics(
+    child: SizedBox(
+      width: 142,
+      height: 95,
+      child: Stack(
+        children: [
+          for (final stone in [
+            (48.0, 28.0, 90.0, 64.0, -.25, AppColors.accentSoft),
+            (8.0, 40.0, 70.0, 50.0, .3, AppColors.talkB),
+            (52.0, 10.0, 46.0, 40.0, -.2, AppColors.onAccent),
+          ])
+            Positioned(
+              left: stone.$1,
+              top: stone.$2,
+              child: Transform.rotate(
+                angle: stone.$5,
+                child: Container(
+                  width: stone.$3,
+                  height: stone.$4,
+                  decoration: BoxDecoration(
+                    color: stone.$6,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.elliptical(stone.$3 * .5, stone.$4 * .6),
+                      topRight: Radius.elliptical(stone.$3 * .6, stone.$4 * .5),
+                      bottomLeft: Radius.elliptical(
+                        stone.$3 * .4,
+                        stone.$4 * .5,
+                      ),
+                      bottomRight: Radius.elliptical(
+                        stone.$3 * .7,
+                        stone.$4 * .6,
+                      ),
+                    ),
+                    boxShadow: AppColors.cardShadow,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
 }

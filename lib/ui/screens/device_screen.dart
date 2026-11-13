@@ -21,35 +21,7 @@ class DeviceScreen extends StatelessWidget {
     final caseBat = info?.boxBattery;
     return GradientScaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            Image.asset(
-              'assets/product/d3200_device_connected_white.webp',
-              width: 40,
-              height: 40,
-              fit: BoxFit.contain,
-              errorBuilder: (_, _, _) => Image.asset(
-                'assets/product/hero_connected_white.png',
-                width: 40,
-                height: 40,
-                fit: BoxFit.contain,
-                errorBuilder: (_, _, _) => const Icon(
-                  Icons.headphones_rounded,
-                  size: 28,
-                  color: AppColors.textMuted,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                info?.hasIdentity == true ? 'soundcore Work' : '已连接',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
+        title: const Text('设备'),
         actions: [
           IconButton(
             tooltip: '刷新',
@@ -67,64 +39,38 @@ class DeviceScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
           children: [
-            const SectionLabel('电量'),
-            _DeviceSection(
-              key: const ValueKey('device-battery-section'),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  Column(
-                    children: [
-                      Image.asset(
-                        'assets/product/d3200_device_white.webp',
-                        height: 28,
-                        errorBuilder: (_, _, _) => const SizedBox.shrink(),
-                      ),
-                      const SizedBox(height: 4),
-                      BatteryRing(
-                        percent: micBat ?? 0,
-                        charging: info?.charging ?? false,
-                        size: 72,
-                      ),
-                      const SizedBox(height: 5),
-                      const Text(
-                        '麦克风',
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Container(width: 1, height: 82, color: AppColors.border),
-                  Column(
-                    children: [
-                      Image.asset(
-                        'assets/product/d3200_chargebox_white.webp',
-                        height: 28,
-                        errorBuilder: (_, _, _) => const SizedBox.shrink(),
-                      ),
-                      const SizedBox(height: 4),
-                      BatteryRing(
-                        percent: caseBat ?? 0,
-                        charging: info?.boxCharging ?? false,
-                        size: 72,
-                      ),
-                      const SizedBox(height: 5),
-                      const Text(
-                        '充电盒',
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+            const ProductStage(),
+            Center(
+              child: Text(
+                c.displayDeviceName,
+                style: AppTypography.number.copyWith(
+                  fontSize: 28,
+                  color: AppColors.textPrimary,
+                ),
               ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              key: const ValueKey('device-battery-section'),
+              children: [
+                Expanded(
+                  child: _BatteryCard(
+                    label: '麦克风',
+                    percent: micBat,
+                    charging: info?.charging ?? false,
+                    asset: 'assets/product/d3200_device_white.webp',
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _BatteryCard(
+                    label: '充电盒',
+                    percent: caseBat,
+                    charging: info?.boxCharging ?? false,
+                    asset: 'assets/product/d3200_chargebox_white.webp',
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 18),
             const SectionLabel('录音'),
@@ -309,25 +255,76 @@ class DeviceScreen extends StatelessWidget {
   }
 }
 
+class _BatteryCard extends StatelessWidget {
+  const _BatteryCard({
+    required this.label,
+    required this.percent,
+    required this.charging,
+    required this.asset,
+  });
+  final String label;
+  final int? percent;
+  final bool charging;
+  final String asset;
+
+  @override
+  Widget build(BuildContext context) => SurfaceCard(
+    padding: const EdgeInsets.all(17),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                percent == null ? '—' : '$percent%',
+                style: AppTypography.number.copyWith(
+                  fontSize: 35,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+            Image.asset(asset, width: 24, height: 24),
+          ],
+        ),
+        const SizedBox(height: 5),
+        Text(
+          charging ? '$label · 充电中' : label,
+          style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+        ),
+        const SizedBox(height: 12),
+        LinearProgressIndicator(
+          value: (percent ?? 0).clamp(0, 100) / 100,
+          minHeight: 3,
+          borderRadius: BorderRadius.circular(4),
+          color: AppColors.accent,
+          backgroundColor: AppColors.border,
+        ),
+      ],
+    ),
+  );
+}
+
 class _DeviceSection extends StatelessWidget {
   const _DeviceSection({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.fromLTRB(0, 12, 0, 16),
     this.borderColor = AppColors.border,
   });
 
   final Widget child;
-  final EdgeInsetsGeometry padding;
   final Color borderColor;
 
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: borderColor)),
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(23),
+        border: Border.all(color: borderColor.withValues(alpha: .7)),
+        boxShadow: AppColors.cardShadow,
       ),
-      child: Padding(padding: padding, child: child),
+      child: Padding(padding: const EdgeInsets.all(18), child: child),
     );
   }
 }
@@ -384,6 +381,7 @@ class _OfflineDeviceView extends StatelessWidget {
     final d = c.displayDevice;
 
     return GradientScaffold(
+      appBar: AppBar(title: const Text('设备')),
       child: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
@@ -394,7 +392,7 @@ class _OfflineDeviceView extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Center(child: _OfflineProductImage()),
+                    const ProductStage(child: _OfflineProductImage()),
                     const SizedBox(height: 10),
                     Text(
                       d.displayName,
@@ -424,7 +422,7 @@ class _OfflineDeviceView extends StatelessWidget {
                     ],
                     const SizedBox(height: 14),
                     const Text(
-                      '设备已断开。点下方按钮扫描并重新连接。',
+                      '未连接',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: AppColors.textSecondary,
@@ -447,20 +445,16 @@ class _OfflineDeviceView extends StatelessWidget {
                 glow: true,
                 child: Column(
                   children: [
-                    const Icon(
-                      Icons.devices_other_rounded,
-                      size: 48,
-                      color: AppColors.textMuted,
-                    ),
+                    const ProductStage(child: _OfflineProductImage()),
                     const SizedBox(height: 16),
                     Text(
-                      '尚未连接设备',
+                      'soundcore Work',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      '扫描附近的 soundcore Work（D3200）并连接。',
+                      '未连接',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: AppColors.textMuted,

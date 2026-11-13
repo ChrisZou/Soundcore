@@ -15,13 +15,13 @@ void main() {
     );
     final decoration = nav.decoration! as BoxDecoration;
     expect(decoration.border, isNotNull);
-    expect(decoration.borderRadius, isNull);
+    expect(decoration.borderRadius, BorderRadius.circular(32));
 
     final activeIndicator = find.byKey(const ValueKey('active-tab-indicator'));
     expect(activeIndicator, findsOneWidget);
     expect(
       tester.getCenter(activeIndicator).dy,
-      greaterThan(tester.getCenter(find.text('首页')).dy),
+      closeTo(tester.getCenter(find.text('首页')).dy, 1),
     );
   });
 }

@@ -102,7 +102,7 @@ class InlinePlayer extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 decoration: BoxDecoration(
                   color: AppColors.bgElevated,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(24),
                   border: Border.all(color: AppColors.border),
                 ),
                 child: Row(
@@ -147,7 +147,7 @@ class InlinePlayer extends StatelessWidget {
                           playing
                               ? Icons.pause_rounded
                               : Icons.play_arrow_rounded,
-                          color: Colors.white,
+                          color: AppColors.onAccent,
                           size: 28,
                         ),
                       ),

@@ -81,6 +81,24 @@ class _FilesBodyState extends State<FilesBody>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Flexible(
+                  child: Text(
+                    '$localCount',
+                    style: AppTypography.number.copyWith(
+                      fontSize: 65,
+                      height: 1,
+                    ),
+                  ),
+                ),
+                const Pebbles(),
+              ],
+            ),
+          ),
           _ExportBanner(controller: c),
           if (c.errorMessage != null) ...[
             const SizedBox(height: 12),
@@ -112,13 +130,20 @@ class _FilesBodyState extends State<FilesBody>
           ],
           const SizedBox(height: 8),
           DecoratedBox(
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: AppColors.border)),
+            decoration: BoxDecoration(
+              color: AppColors.navigation,
+              borderRadius: BorderRadius.circular(30),
             ),
             child: TabBar(
               controller: _tabs,
               dividerColor: Colors.transparent,
-              indicatorSize: TabBarIndicatorSize.label,
+              indicatorSize: TabBarIndicatorSize.tab,
+              indicatorPadding: const EdgeInsets.all(4),
+              indicator: BoxDecoration(
+                color: AppColors.bg,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: AppColors.cardShadow,
+              ),
               indicatorColor: AppColors.accent,
               indicatorWeight: 2,
               labelColor: AppColors.accent,
@@ -320,8 +345,7 @@ class _LocalExportsTabState extends State<_LocalExportsTab> {
                     key: const PageStorageKey('local-recordings-scroll'),
                     padding: const EdgeInsets.only(bottom: 20),
                     itemCount: widget.paths.length,
-                    separatorBuilder: (_, _) =>
-                        const Divider(height: 1, color: AppColors.border),
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
                     itemBuilder: (context, i) {
                       final path = widget.paths[i];
                       return _LocalExportCard(
@@ -587,8 +611,7 @@ class _DeviceFilesTab extends StatelessWidget {
                     key: const PageStorageKey('device-recordings-scroll'),
                     padding: const EdgeInsets.only(bottom: 20),
                     itemCount: c.files.length,
-                    separatorBuilder: (_, _) =>
-                        const Divider(height: 1, color: AppColors.border),
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
                     itemBuilder: (context, i) {
                       final f = c.files[i];
                       final selected = c.selectedFileIds.contains(f.fileId);
@@ -673,7 +696,6 @@ class _LocalExportCard extends StatelessWidget {
     );
     final recording = c.recordingView(reference);
     final text = FilesBody.cleanTranscript(recording.text);
-    final loaded = c.playingPath == path;
     final duration = FilesBody.formatDuration(c.localDurationForPath(path));
     final status = recording.audioLocked
         ? (recording.live ? '录音中' : '正在保存')
@@ -685,9 +707,21 @@ class _LocalExportCard extends StatelessWidget {
         ? '已转写'
         : null;
     return Material(
-      color: selected
-          ? AppColors.mint.withValues(alpha: 0.08)
-          : Colors.transparent,
+      color: selected || path == c.exportedPaths.firstOrNull
+          ? AppColors.accentSoft
+          : AppColors.bgCard,
+      shape: RoundedRectangleBorder(
+        side: const BorderSide(color: AppColors.onAccent),
+        borderRadius: BorderRadius.only(
+          topLeft: const Radius.circular(25),
+          topRight: const Radius.circular(25),
+          bottomRight: const Radius.circular(25),
+          bottomLeft: Radius.circular(
+            path == c.exportedPaths.firstOrNull ? 7 : 25,
+          ),
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         key: ValueKey('recording-row-$path'),
         onLongPress: onLongPress,
@@ -695,7 +729,7 @@ class _LocalExportCard extends StatelessWidget {
             ? (recording.audioLocked ? null : onSelected)
             : () => RecordingNavigation.open(context, reference),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -705,17 +739,6 @@ class _LocalExportCard extends StatelessWidget {
                   onChanged: recording.audioLocked || onSelected == null
                       ? null
                       : (_) => onSelected?.call(),
-                )
-              else
-                Padding(
-                  padding: const EdgeInsets.only(top: 3, right: 12),
-                  child: Icon(
-                    loaded
-                        ? Icons.graphic_eq_rounded
-                        : Icons.audio_file_outlined,
-                    color: loaded ? AppColors.accent : AppColors.textMuted,
-                    size: 24,
-                  ),
                 ),
               Expanded(
                 child: Column(
@@ -726,8 +749,11 @@ class _LocalExportCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontFamily: AppTypography.serif,
+                        fontFamilyFallback: AppTypography.serifFallback,
                         fontWeight: FontWeight.w600,
-                        fontSize: 15,
+                        fontSize: 21,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -748,8 +774,8 @@ class _LocalExportCard extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontSize: 14,
-                          height: 1.45,
+                          fontSize: 12,
+                          height: 1.6,
                           color: AppColors.textSecondary,
                         ),
                       ),
@@ -1421,7 +1447,12 @@ class _DeviceFileTile extends StatelessWidget {
     return Material(
       color: selected
           ? AppColors.mint.withValues(alpha: 0.08)
-          : Colors.transparent,
+          : AppColors.bgCard,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(23),
+        side: const BorderSide(color: AppColors.border),
+      ),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         key: ValueKey('device-recording-row-${file.fileId}'),
         onLongPress: onLongPress,
