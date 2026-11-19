@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'support/moss_fakes.dart';
+import 'package:anker_recorder/ai/agent_plan_asr.dart';
 import 'package:anker_recorder/ai/moss_stt.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:anker_recorder/state/moss_jobs.dart';
 import 'dart:io';
 import 'dart:typed_data' show Endian;
@@ -35,6 +37,61 @@ void main() {
     });
     return result;
   }
+
+  test(
+    'Agent Plan submits the finished take once using its saved configuration',
+    () async {
+      FlutterSecureStorage.setMockInitialValues({});
+      final dir = await Directory.systemTemp.createTemp('plan-take-');
+      addTearDown(() => dir.delete(recursive: true));
+      final file = await File('${dir.path}/209.wav').writeAsBytes([1, 2]);
+      final ble = _Ble();
+      final plan = _PlanAsr();
+      final c = RecorderController(
+        loadPersistedState: false,
+        ble: ble,
+        agentPlanAsr: plan,
+      );
+      addTearDown(c.dispose);
+      c.setSpeechProvider(SttProvider.agentPlan);
+      final marker = 'mock-${identityHashCode(Object())}';
+      await c.saveAgentPlanKey(marker);
+      await c.startRecord();
+      c.handleRealtimeStateForTesting(
+        RealtimeStreamState(
+          active: true,
+          fileId: 209,
+          path: file.path,
+          bytesReceived: 320,
+        ),
+      );
+      c.handleRealtimeOpusFrameForTesting(Uint8List(160));
+      final ref = c.currentRecordingReference!;
+      await c.pauseRecord();
+      final stopped = RealtimeStreamState(
+        fileId: 209,
+        path: file.path,
+        bytesReceived: 320,
+      );
+      c.handleRealtimeStateForTesting(stopped);
+      await Future<void>.delayed(Duration.zero);
+      expect(plan.calls, 0);
+      await c.saveAgentPlanKey(null);
+      c.setSpeechProvider(SttProvider.soniox);
+      await c.startRecord();
+      expect(c.currentRecordingReference!.sessionId, ref.sessionId);
+      ble.stopRecording();
+      await settleUntil(() => plan.calls == 1);
+      c.handleRealtimeStateForTesting(stopped);
+      c.handleRealtimeStateForTesting(stopped);
+      plan.result.complete(const SttResult(text: '录音结束'));
+      await settleUntil(() => c.recordingView(ref).text == '录音结束');
+      expect(plan.calls, 1);
+      expect(plan.key == marker, isTrue);
+      expect(c.recordingView(ref).provider, SttProvider.agentPlan);
+      expect(c.pcmFramesDecoded, 0);
+    },
+  );
 
   test(
     'MOSS manual transcription retains provider and permits Apple translation',
@@ -782,5 +839,21 @@ class _Stream implements SttStreamSession {
   @override
   Future<void> dispose() async {
     await _events.close();
+  }
+}
+
+class _PlanAsr extends AgentPlanAsr {
+  final result = Completer<SttResult>();
+  int calls = 0;
+  String? key;
+  @override
+  Future<SttResult> transcribePath(
+    String path, {
+    required String? apiKey,
+    SttFileProgressCallback? onProgress,
+  }) {
+    calls++;
+    key = apiKey;
+    return result.future;
   }
 }

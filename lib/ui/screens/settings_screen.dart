@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -42,9 +44,7 @@ class SettingsScreen extends StatelessWidget {
                 children: [
                   _SettingsSwitch(
                     title: '自动转写',
-                    subtitle: c.speechProvider == SttProvider.moss
-                        ? '录音结束后生成文字'
-                        : null,
+                    subtitle: c.speechProvider.fileOnly ? '录音结束后生成文字' : null,
                     value: c.autoTranscribe,
                     onChanged: c.setAutoTranscribe,
                   ),
@@ -60,6 +60,15 @@ class SettingsScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 14),
                     _TranscriptLanguageSelector(controller: c),
+                  ] else if (c.speechProvider == SttProvider.agentPlan) ...[
+                    _ApiKeyField(
+                      key: const ValueKey('apikey-agent-plan'),
+                      label: 'Agent Plan 专属 API Key',
+                      initialValue: c.agentPlanKeyStored ?? '',
+                      onSave: c.saveAgentPlanKey,
+                    ),
+                    if (c.agentPlanStorageError != null)
+                      Text(c.agentPlanStorageError!),
                   ] else if (c.speechProvider == SttProvider.moss)
                     _MossKeyField(controller: c)
                   else
@@ -74,7 +83,7 @@ class SettingsScreen extends StatelessWidget {
                       ),
                     ),
                   ],
-                  if (c.speechProvider != SttProvider.moss) ...[
+                  if (!c.speechProvider.fileOnly) ...[
                     const Divider(height: 28),
                     _SttModeSelector(controller: c),
                   ],
@@ -651,7 +660,7 @@ class _ApiKeyField extends StatefulWidget {
 
   final String label;
   final String initialValue;
-  final ValueChanged<String?> onSave;
+  final FutureOr<void> Function(String?) onSave;
 
   @override
   State<_ApiKeyField> createState() => _ApiKeyFieldState();
@@ -660,6 +669,7 @@ class _ApiKeyField extends StatefulWidget {
 class _ApiKeyFieldState extends State<_ApiKeyField> {
   late final TextEditingController _controller;
   bool _dirty = false;
+  bool _saving = false;
 
   @override
   void initState() {
@@ -682,19 +692,30 @@ class _ApiKeyFieldState extends State<_ApiKeyField> {
     super.dispose();
   }
 
-  void _commit() {
-    final v = _controller.text.trim();
-    widget.onSave(v.isEmpty ? null : v);
-    setState(() => _dirty = false);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          v.isEmpty ? '已清除 ${widget.label}' : '已保存 ${widget.label}',
+  Future<void> _commit() async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    final value = _controller.text.trim();
+    try {
+      await widget.onSave(value.isEmpty ? null : value);
+      if (!mounted) return;
+      setState(() => _dirty = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            value.isEmpty ? '已清除 ${widget.label}' : '已保存 ${widget.label}',
+          ),
+          duration: const Duration(seconds: 2),
         ),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('无法保存设置，请检查系统存储后重试')));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   @override
@@ -717,6 +738,7 @@ class _ApiKeyFieldState extends State<_ApiKeyField> {
         ),
         const SizedBox(height: 8),
         TextField(
+          enabled: !_saving,
           controller: _controller,
           onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
           obscureText: true,
@@ -762,8 +784,7 @@ class _ApiKeyFieldState extends State<_ApiKeyField> {
                     onPressed: () {
                       _controller.clear();
                       setState(() => _dirty = true);
-                      widget.onSave(null);
-                      setState(() => _dirty = false);
+                      _commit();
                     },
                     icon: const Icon(
                       Icons.clear_rounded,

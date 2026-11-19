@@ -89,6 +89,35 @@ void main() {
     expect(controller.sonioxTranslationModeAvailable, isFalse);
   });
 
+  testWidgets(
+    'Settings lists Agent Plan with its own obscured file-only credential',
+    (tester) async {
+      final controller = RecorderController(loadPersistedState: false);
+      addTearDown(controller.dispose);
+      await tester.pumpWidget(
+        ChangeNotifierProvider.value(
+          value: controller,
+          child: const MaterialApp(home: SettingsScreen()),
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('speech-provider-soniox')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(SttProvider.agentPlan.label).last);
+      await tester.pumpAndSettle();
+      expect(controller.speechProvider, SttProvider.agentPlan);
+      final field = find.descendant(
+        of: find.byKey(const ValueKey('apikey-agent-plan')),
+        matching: find.byType(TextField),
+      );
+      expect(tester.widget<TextField>(field).obscureText, isTrue);
+      expect(find.text('Agent Plan 专属 API Key'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('stt-display-mode-selector')),
+        findsNothing,
+      );
+    },
+  );
+
   testWidgets('settings selector enables Soniox translation mode', (
     tester,
   ) async {

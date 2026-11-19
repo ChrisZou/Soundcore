@@ -15,7 +15,7 @@
 - **首页**：浏览本地与设备端录音，下拉刷新、长按批量选择；点开详情阅读全文、翻译、播放、分享或重命名
 - **录音详情**：实时转写与保存后的文本使用同一详情页；返回首页不停止录音，暂停后保留当前页面。向上滚动可阅读旧内容，点「最新内容」恢复跟随
 - **设备**：电量（耳机 + 充电盒）、录音控制、配对绑定 / 解绑、恢复出厂设置
-- **设置**：选择 Apple 设备端或 Soniox、准备语言、自动转写、API Key 管理与诊断日志
+- **设置**：选择 Apple 设备端、Soniox、MOSS Pro 或火山方舟 Agent Plan，准备语言、自动转写、API Key 管理与诊断日志
 - **扫描**：首页顶部按钮触发底部弹窗（非独立 Tab）搜索并连接 BLE 设备
 - **Wi‑Fi 批量导出**：SoftAP 直连 + AES 解密，导出文件本地播放
 - **iPhone 操作按钮**：从锁屏或其他 App 打开本应用，并让已绑定的 D3200 立即开始录音
@@ -88,6 +88,7 @@ flutter test
   - 实时路径：BLE Opus → PCM16 → 对应服务商 WebSocket STT。
   - 批量路径：通过 Soniox 异步 Files API 上传 Ogg 文件。
   - Key 配置：`export SONIOX_API_KEY=…` 后重启 App，或在设置页粘贴保存。
+- **火山方舟 Agent Plan**（`doubao-seed-asr-2.0`）支持在录音结束后自动转写，也可在录音详情中手动转写或取消。在「设置 → 语音服务」选择该服务后，保存 Agent Plan 专属 API Key。密钥存入系统安全存储，转写只连接 Plan 专用端点。
 - **Wi‑Fi SoftAP 批量导出 + 解密**：BLE 连接后先做 ECDH 握手（`0x2E/0x01`）生成会话密钥；导出时打开设备 SoftAP → 加入 → WebSocket 拉取，每 160 字节分片用 `1A07` 头（`soundcored3200` magic）中的单文件密钥做 AES‑CTR 解密。导出文件保存在 `Documents/AnkerRecorder/exports` 下，命名为 `{fileId}.opus`（握手失败则为 `.opus.bin`）。本地**播放**使用 `just_audio` 播放已导出文件。
 - 设备协议细节（服务/特征 UUID、命令字、加密流程等）见 [`PROTOCOL.md`](PROTOCOL.md)。
 - 请保持蓝牙开启；旧版 Android 扫描需授予定位权限。

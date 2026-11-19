@@ -8,6 +8,9 @@ import 'package:just_audio/just_audio.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../ai/agent_plan_asr.dart';
+import '../ai/agent_plan_protocol.dart';
+import '../audio/recording_pcm.dart';
 import '../ai/soniox_stt.dart';
 import '../ai/moss_stt.dart';
 import '../ai/soniox_stt_stream.dart';
@@ -28,6 +31,7 @@ import '../protocol/commands.dart';
 import '../protocol/frame.dart';
 import '../protocol/models.dart';
 import '../wifi/wifi_export_service.dart';
+import 'agent_plan_key_store.dart';
 import 'app_settings_store.dart';
 import 'device_store.dart';
 import 'export_catalog.dart';
@@ -57,10 +61,14 @@ class RecorderController extends ChangeNotifier {
     SonioxSttService? sonioxSpeech,
     MossSttService? mossSpeech,
     MossJobStore? mossJobStore,
+    AgentPlanAsr? agentPlanAsr,
+    AgentPlanKeyStore? agentPlanKeyStore,
     this.recordingShortcutScanTimeout = const Duration(seconds: 30),
   }) : _ble = ble ?? BleService(),
        _appleSpeech = appleSpeech ?? AppleSpeechService(),
        _sonioxStt = sonioxSpeech ?? SonioxSttService(),
+       _agentPlanAsr = agentPlanAsr ?? AgentPlanAsr(),
+       _agentPlanKeyStore = agentPlanKeyStore ?? AgentPlanKeyStore(),
        _mossStt = mossSpeech ?? MossSttService(),
        _persistedDeviceLoader = persistedDeviceLoader ?? DeviceStore.load {
     _subs.add(
@@ -235,6 +243,49 @@ class RecorderController extends ChangeNotifier {
     }
   }
 
+  final AgentPlanAsr _agentPlanAsr;
+  final AgentPlanKeyStore _agentPlanKeyStore;
+  String? _agentPlanKey;
+  String? agentPlanStorageError;
+  String? get agentPlanKeyStored => _agentPlanKey;
+
+  Future<void> _agentPlanKeyOperation = Future.value();
+
+  Future<void> _loadAgentPlanKey() {
+    return _agentPlanKeyOperation = _agentPlanKeyOperation.then((_) async {
+      try {
+        _agentPlanKey = await _agentPlanKeyStore.read();
+        agentPlanStorageError = null;
+      } catch (_) {
+        _agentPlanKey = null;
+        agentPlanStorageError = '无法读取专属 API Key，请检查系统安全存储';
+      }
+      notifyListeners();
+    });
+  }
+
+  Future<void> saveAgentPlanKey(String? value) async {
+    await _settingsLoaded;
+    final trimmed = value?.trim();
+    final key = trimmed == null || trimmed.isEmpty ? null : trimmed;
+    final save = _agentPlanKeyOperation.then((_) async {
+      await _agentPlanKeyStore.save(key);
+      _agentPlanKey = key;
+      agentPlanStorageError = null;
+      notifyListeners();
+    });
+    _agentPlanKeyOperation = save.catchError((Object _) {});
+    await save;
+  }
+
+  bool canCancelAgentPlan(RecordingReference ref) =>
+      _fileJobProvider == SttProvider.agentPlan &&
+      _fileJobKey == _referenceKey(ref);
+
+  void cancelAgentPlan(RecordingReference ref) {
+    if (canCancelAgentPlan(ref)) _agentPlanAsr.cancel();
+  }
+
   String? get mossApiKeyStored => _mossStt.apiKeyOverride;
   bool get mossConfigured => _mossStt.apiKey != null;
   String? get mossRecoveryError => _mossJobs.loadError;
@@ -261,7 +312,9 @@ class RecorderController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _enqueueMossRecording(
+  final _pendingAgentPlan = <_RecordingSession>[];
+
+  Future<void> _enqueueFinishedRecording(
     _RecordingSession owner,
     String path,
   ) async {
@@ -270,9 +323,17 @@ class RecorderController extends ChangeNotifier {
         owner.paused ||
         !owner.ended ||
         _finalizingRecordings.contains(_recordingKey(path: path)) ||
-        owner.configuration.provider != SttProvider.moss ||
+        !owner.configuration.provider.fileOnly ||
         !owner.configuration.enabled ||
         !_isConfigured(owner.configuration)) {
+      return;
+    }
+    if (owner.configuration.provider == SttProvider.agentPlan) {
+      if (!owner.agentPlanScheduled) {
+        owner.agentPlanScheduled = true;
+        _pendingAgentPlan.add(owner);
+        notifyListeners();
+      }
       return;
     }
     try {
@@ -289,6 +350,7 @@ class RecorderController extends ChangeNotifier {
 
   Future<void> _loadPersistedSettings() async {
     final s = await AppSettingsStore.load();
+    if (s.speechProvider == SttProvider.agentPlan) await _loadAgentPlanKey();
     if (s.sonioxApiKey != null) _sonioxStt.apiKeyOverride = s.sonioxApiKey;
     _mossStt.apiKeyOverride = s.mossApiKey;
     autoTranscribe = s.autoTranscribe;
@@ -314,7 +376,7 @@ class RecorderController extends ChangeNotifier {
       appleSupported: appleCapabilities.supported,
       sonioxConfigured: _sonioxStt.isConfigured,
     );
-    if (speechProvider == SttProvider.moss ||
+    if (speechProvider.fileOnly ||
         (speechProvider == SttProvider.apple &&
             sttMode == SttDisplayMode.conversation)) {
       sttMode = SttDisplayMode.transcription;
@@ -427,7 +489,8 @@ class RecorderController extends ChangeNotifier {
   void setSpeechProvider(SttProvider provider) {
     if (provider == speechProvider) return;
     speechProvider = provider;
-    if (provider == SttProvider.moss ||
+    if (provider == SttProvider.agentPlan) unawaited(_loadAgentPlanKey());
+    if (provider.fileOnly ||
         (provider == SttProvider.apple &&
             sttMode == SttDisplayMode.conversation)) {
       sttMode = SttDisplayMode.transcription;
@@ -449,18 +512,21 @@ class RecorderController extends ChangeNotifier {
     provider: speechProvider,
     sourceLanguage: speechProvider == SttProvider.apple
         ? appleSourceLanguage
+        : speechProvider == SttProvider.agentPlan
+        ? 'auto'
         : transcriptLanguage,
     targetLanguage: translationTargetLanguage,
     ownerLanguage: ownerLanguage,
     guestLanguage: guestLanguage,
-    mode: speechProvider == SttProvider.moss
-        ? SttDisplayMode.transcription
-        : sttMode,
+    mode: speechProvider.fileOnly ? SttDisplayMode.transcription : sttMode,
     enabled: autoTranscribe,
     appleReady: appleSpeechReady,
     appleTranslationReady: appleTranslationAvailable,
-    sonioxKey: _sonioxStt.apiKey,
-    mossKey: _mossStt.apiKey,
+    sonioxKey: speechProvider == SttProvider.soniox ? _sonioxStt.apiKey : null,
+    mossKey: speechProvider == SttProvider.moss ? _mossStt.apiKey : null,
+    agentPlanKey: speechProvider == SttProvider.agentPlan
+        ? _agentPlanKey
+        : null,
   );
 
   _RecordingSession? get _currentRecording =>
@@ -475,12 +541,12 @@ class RecorderController extends ChangeNotifier {
   // They still belong to this take and must never adopt the next provider.
   _SpeechConfiguration get _activeConfiguration =>
       _liveConfiguration ?? _settingsConfiguration;
-  bool _isConfigured(_SpeechConfiguration config) =>
-      config.provider == SttProvider.apple
-      ? config.appleReady && config.sourceLanguage.isNotEmpty
-      : config.provider == SttProvider.moss
-      ? config.mossKey?.isNotEmpty == true
-      : config.sonioxKey?.isNotEmpty == true;
+  bool _isConfigured(_SpeechConfiguration config) => switch (config.provider) {
+    SttProvider.apple => config.appleReady && config.sourceLanguage.isNotEmpty,
+    SttProvider.moss => config.mossKey?.isNotEmpty == true,
+    SttProvider.agentPlan => config.agentPlanKey?.isNotEmpty == true,
+    SttProvider.soniox => config.sonioxKey?.isNotEmpty == true,
+  };
   bool get _activeSttConfigured => _isConfigured(_activeConfiguration);
   bool get _activeAutoTranscribe => _activeConfiguration.enabled;
   String get activeTranslationTargetLanguage =>
@@ -588,6 +654,7 @@ class RecorderController extends ChangeNotifier {
           _isRecordingAudioLocked(id, path),
       processing:
           _fileJobKey == key ||
+          _pendingAgentPlan.contains(session) ||
           session?.finalizing == true ||
           (_mossJobs.forRecording(key)?.pending ?? false) ||
           _mossJobs.active?.recordingKey == key,
@@ -685,6 +752,8 @@ class RecorderController extends ChangeNotifier {
   }
 
   String _speechErrorMessage(Object error) {
+    if (error is AgentPlanError) return error.message;
+    if (error is RecordingAudioException) return error.message;
     if (error is MossException) return error.message;
     final code = error is PlatformException ? error.code : error.toString();
     return switch (code) {
@@ -951,7 +1020,7 @@ class RecorderController extends ChangeNotifier {
           unawaited(
             _convertExportToWav(s.path!).whenComplete(() {
               _finalizingRecordings.remove(key);
-              unawaited(_enqueueMossRecording(owner, s.path!));
+              unawaited(_enqueueFinishedRecording(owner, s.path!));
               notifyListeners();
             }),
           );
@@ -988,9 +1057,9 @@ class RecorderController extends ChangeNotifier {
           final owner = _sessionForReference(
             RecordingReference(path: finishedPath),
           );
-          if (owner?.configuration.provider == SttProvider.moss) {
+          if (owner?.configuration.provider.fileOnly == true) {
             owner!.finalizing = false;
-            unawaited(_enqueueMossRecording(owner, finishedPath));
+            unawaited(_enqueueFinishedRecording(owner, finishedPath));
           }
           notifyListeners();
         }),
@@ -1165,7 +1234,7 @@ class RecorderController extends ChangeNotifier {
 
   /// Live BLE Opus frame → PCM16 → provider WS STT (when auto-transcribe on).
   void _onRealtimeOpusFrame(Uint8List frame) {
-    if (_activeConfiguration.provider == SttProvider.moss ||
+    if (_activeConfiguration.provider.fileOnly ||
         !_activeAutoTranscribe ||
         !_activeSttConfigured ||
         _recordWireStatus == 2) {
@@ -1202,13 +1271,13 @@ class RecorderController extends ChangeNotifier {
 
   /// Prefer PCM WS when decode works; false after hard stream failure → Ogg batch.
   bool get _streamSttPreferred =>
-      _activeConfiguration.provider != SttProvider.moss &&
+      !_activeConfiguration.provider.fileOnly &&
       _preferStreamStt &&
       _opusPcm.isReady &&
       _activeAutoTranscribe;
 
   Future<bool> _ensureStreamStt() async {
-    if (_activeConfiguration.provider == SttProvider.moss ||
+    if (_activeConfiguration.provider.fileOnly ||
         !_activeAutoTranscribe ||
         !_activeSttConfigured ||
         !_preferStreamStt) {
@@ -1644,8 +1713,7 @@ class RecorderController extends ChangeNotifier {
   }
 
   void setSttMode(SttDisplayMode mode) {
-    if (speechProvider == SttProvider.moss &&
-        mode != SttDisplayMode.transcription) {
+    if (speechProvider.fileOnly && mode != SttDisplayMode.transcription) {
       return;
     }
     if (mode != SttDisplayMode.transcription &&
@@ -1720,7 +1788,7 @@ class RecorderController extends ChangeNotifier {
     if (previous != null) {
       _snapshotLiveText();
       previous.active = false;
-      if (previous.configuration.provider == SttProvider.moss) {
+      if (previous.configuration.provider.fileOnly) {
         previous.paused = false;
         previous.ended = true;
       }
@@ -1729,7 +1797,7 @@ class RecorderController extends ChangeNotifier {
       if (previous.path != null &&
           !realtimeState.active &&
           !_finalizingRecordings.contains(_recordingKey(path: previous.path))) {
-        unawaited(_enqueueMossRecording(previous, previous.path!));
+        unawaited(_enqueueFinishedRecording(previous, previous.path!));
       }
     }
     final config = _settingsConfiguration;
@@ -1827,12 +1895,25 @@ class RecorderController extends ChangeNotifier {
     bool prepareLanguages = false,
   }) async {
     await _settingsLoaded;
+    if (speechProvider == SttProvider.agentPlan) await _agentPlanKeyOperation;
     if (_disposed) return;
     final settings = _settingsConfiguration;
     final config =
         settings.provider == SttProvider.apple && sourceLanguage != null
         ? settings.withSourceLanguage(sourceLanguage.trim())
         : settings;
+    await _runFileTranscription(
+      path,
+      config,
+      prepareLanguages: prepareLanguages,
+    );
+  }
+
+  Future<void> _runFileTranscription(
+    String path,
+    _SpeechConfiguration config, {
+    bool prepareLanguages = false,
+  }) async {
     final key = _recordingKey(path: path);
     if (fileProcessingBusy ||
         _isRecordingAudioLocked(fileIdFromPath(path), path)) {
@@ -2051,6 +2132,13 @@ class RecorderController extends ChangeNotifier {
       return _appleSpeech.transcribePath(
         wavPath,
         sourceLanguage: config.sourceLanguage,
+        onProgress: onProgress,
+      );
+    }
+    if (config.provider == SttProvider.agentPlan) {
+      return _agentPlanAsr.transcribePath(
+        path,
+        apiKey: config.agentPlanKey,
         onProgress: onProgress,
       );
     }
@@ -2875,20 +2963,20 @@ class RecorderController extends ChangeNotifier {
 
     if (active) {
       // New take after a full stop (not pause→resume): wipe live draft UI.
-      final mossResume =
+      final fileOnlyResume =
           prevWire == 2 &&
-          _currentRecording?.configuration.provider == SttProvider.moss &&
+          _currentRecording?.configuration.provider.fileOnly == true &&
           (fileId == null ||
               _currentRecording?.fileId == null ||
               _currentRecording?.fileId == fileId);
-      final mossNewFile =
-          _currentRecording?.configuration.provider == SttProvider.moss &&
+      final fileOnlyNewFile =
+          _currentRecording?.configuration.provider.fileOnly == true &&
           fileId != null &&
           _currentRecording?.fileId != null &&
           _currentRecording?.fileId != fileId;
       if (prevWire == 0 ||
-          mossNewFile ||
-          (source == 'app_start' && !mossResume)) {
+          fileOnlyNewFile ||
+          (source == 'app_start' && !fileOnlyResume)) {
         unawaited(_beginNewLiveTranscriptSession());
       }
       _bindCurrentRecording(fileId: fileId);
@@ -2941,7 +3029,7 @@ class RecorderController extends ChangeNotifier {
       if (status == 0 && !realtimeState.active) {
         final owner = _currentRecording;
         if (owner?.path != null) {
-          unawaited(_enqueueMossRecording(owner!, owner.path!));
+          unawaited(_enqueueFinishedRecording(owner!, owner.path!));
         }
       }
       // Refresh inventory after hardware/app stop so Files tab shows the clip.
@@ -3585,6 +3673,9 @@ class RecorderController extends ChangeNotifier {
         _transcriptMetadata.remove(key);
         _recordingTranslations.remove(key);
         _recordingErrors.remove(key);
+        _pendingAgentPlan.removeWhere(
+          (s) => id != null && s.fileId == id || s.path == path,
+        );
         _recordingSessions.removeWhere(
           (_, session) =>
               id != null && session.fileId == id || session.path == path,
@@ -4402,6 +4493,16 @@ class RecorderController extends ChangeNotifier {
     if (!_disposed) {
       super.notifyListeners();
       _mossJobs.wake();
+      if (_pendingAgentPlan.isNotEmpty && !fileProcessingBusy) {
+        final owner = _pendingAgentPlan.first;
+        final path = recordingView(
+          RecordingReference(sessionId: owner.id),
+        ).path;
+        if (path != null && !_isRecordingAudioLocked(owner.fileId, path)) {
+          _pendingAgentPlan.removeAt(0);
+          unawaited(_runFileTranscription(path, owner.configuration));
+        }
+      }
     }
   }
 
@@ -4426,6 +4527,7 @@ class RecorderController extends ChangeNotifier {
     _opusPcm.dispose();
     unawaited(_player.dispose());
     unawaited(_realtime.dispose());
+    _agentPlanAsr.cancel();
     _sonioxStt.dispose();
     _mossJobs.dispose();
     unawaited(_appleSpeech.dispose());
@@ -4448,6 +4550,7 @@ class _SpeechConfiguration {
     required this.appleTranslationReady,
     this.sonioxKey,
     this.mossKey,
+    this.agentPlanKey,
   });
   final SttProvider provider;
   final String sourceLanguage;
@@ -4460,6 +4563,7 @@ class _SpeechConfiguration {
   final bool appleTranslationReady;
   final String? sonioxKey;
   final String? mossKey;
+  final String? agentPlanKey;
 
   _SpeechConfiguration withSourceLanguage(String source) =>
       _SpeechConfiguration(
@@ -4474,6 +4578,7 @@ class _SpeechConfiguration {
         appleTranslationReady: appleTranslationReady,
         sonioxKey: sonioxKey,
         mossKey: mossKey,
+        agentPlanKey: agentPlanKey,
       );
 }
 
@@ -4486,6 +4591,7 @@ class _RecordingSession {
   String text = '';
   RecordingTranslation? translation;
   String? error;
+  bool agentPlanScheduled = false;
   bool ended = false;
   bool active = true;
   bool paused = false;

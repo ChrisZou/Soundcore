@@ -429,9 +429,7 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen> {
                           recording.paused
                               ? '已暂停'
                               : recording.live
-                              ? (recording.provider == SttProvider.moss
-                                    ? '录音中'
-                                    : '实时转写')
+                              ? (recording.provider.fileOnly ? '录音中' : '实时转写')
                               : '转写文本',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -439,6 +437,12 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen> {
                             color: AppColors.textSecondary,
                           ),
                         ),
+                      ),
+                    if (c.canCancelAgentPlan(recording.reference))
+                      IconButton(
+                        tooltip: '取消转写',
+                        icon: const Icon(Icons.stop_circle_outlined),
+                        onPressed: () => c.cancelAgentPlan(recording.reference),
                       ),
                     if (recording.processing) ...[
                       const SizedBox(width: 8),
@@ -882,7 +886,7 @@ class _EmptyRecording extends StatelessWidget {
               ? (recording.provider == SttProvider.apple
                     ? '在设置中下载并准备语音语言'
                     : '请在设置中配置 ${recording.provider.label}')
-              : recording.provider == SttProvider.moss
+              : recording.provider.fileOnly
               ? '录音结束后生成文字'
               : '开始说话后，文字会显示在这里')
         : !local

@@ -1,10 +1,13 @@
 enum SttProvider {
   apple('Apple 设备端'),
   soniox('Soniox'),
-  moss('MOSS Pro');
+  moss('MOSS Pro'),
+  agentPlan('火山方舟 Agent Plan · 豆包语音识别 2.0');
 
   const SttProvider(this.label);
   final String label;
+
+  bool get fileOnly => this == moss || this == agentPlan;
 
   static SttProvider? parse(Object? value) {
     for (final provider in values) {
